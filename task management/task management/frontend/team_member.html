@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Member Dashboard</title>
+    <style>
+        /* Same styles as register.html */
+        .dashboard {
+            margin-top: 20px;
+        }
+        .dashboard h2 {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Team Member Dashboard</h2>
+        <div class="dashboard">
+            <h2>Your Tasks</h2>
+            <div id="task-list">
+                <!-- Task list will be populated dynamically -->
+            </div>
+        </div>
+    </div>
+    <script>
+        const apiUrl = 'http://localhost:8000/tasks/'; // Update with your tasks API URL
+        const token = localStorage.getItem('token');
+
+        function loadTasks() {
+            fetch(apiUrl, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const taskList = document.getElementById('task-list');
+                taskList.innerHTML = '<h2>Your Tasks</h2>';
+                data.forEach(task => {
+                    if (task.assigned_to === localStorage.getItem('user_id')) {
+                        taskList.innerHTML += `
+                            <div class="task-item">
+                                <h3>${task.title}</h3>
+                                <p>${task.description}</p>
+                                <p><strong>Status:</strong> ${task.status}</p>
+                            </div>
+                        `;
+                    }
+                });
+            });
+        }
+
+        loadTasks();
+    </script>
+</body>
+</html>

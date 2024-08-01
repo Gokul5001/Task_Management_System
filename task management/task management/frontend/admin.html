@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <style>
+        .container {
+            width: 80%;
+            margin: 0 auto;
+        }
+        .dashboard {
+            margin-top: 20px;
+        }
+        .dashboard h2 {
+            margin-bottom: 20px;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        .task-item {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Admin Dashboard</h2>
+        <div class="dashboard">
+            <!-- Role Assignment Form -->
+            <h2>Assign Roles</h2>
+            <form id="role-form">
+                <select id="user-select" required>
+                    <option value="">Select User</option>
+                    <!-- Options will be populated dynamically -->
+                </select>
+                <select id="new-role" required>
+                    <option value="">Select New Role</option>
+                    <option value="team_leader">Team Leader</option>
+                    <option value="team_member">Team Member</option>
+                </select>
+                <select id="team-leader-select" style="display: none;" required>
+                    <option value="">Select Team Leader</option>
+                    <!-- Options will be populated dynamically -->
+                </select>
+                <button type="submit">Assign Role</button>
+            </form>
+
+            <!-- Task Management Form -->
+            <h2>Task Management</h2>
+            <form id="task-form">
+                <input type="text" id="title" placeholder="Task Title" required>
+                <textarea id="description" rows="4" placeholder="Task Description" required></textarea>
+                <select id="assigned_to" required>
+                    <option value="">Select User</option>
+                    <!-- Options will be populated dynamically -->
+                </select>
+                <button type="submit">Create Task</button>
+            </form>
+
+            <!-- Task List -->
+            <div id="task-list">
+                <h2>All Tasks</h2>
+                <!-- Task list will be populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const apiUrl = 'http://localhost:8000/tasks/'; // Update with your tasks API URL
+        const usersApiUrl = 'http://localhost:8000/users/'; // Update with your users API URL
+        const roleAssignmentApiUrl = 'http://localhost:8000/role-assignment/'; // Update with your role assignment API URL
+        const token = localStorage.getItem('token');
+
+        function loadTasks() {
+            fetch(apiUrl, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const taskList = document.getElementById('task-list');
+                taskList.innerHTML = '<h2>All Tasks</h2>';
+                data.forEach(task => {
+                    taskList.innerHTML += `
+                        <div class="task-item">
+                            <h3>${task.title}</h3>
+                            <p>${task.description}</p>
+                            <p><strong>Assigned To:</strong> ${task.assigned_to}</p>
+                            <p><strong>Status:</strong> ${task.status}</p>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        function loadUsers() {
+            fetch(usersApiUrl, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const userSelect = document.getElementById('user-select');
+                const taskAssignSelect = document.getElementById('assigned_to');
+                const teamLeaderSelect = document.getElementById('team-leader-select');
+
+                data.forEach(user => {
+                    if (user.role !== 'admin') {
+                        userSelect.innerHTML += `<option value="${user.id}">${user.email}</option>`;
+                        taskAssignSelect.innerHTML += `<option value="${user.id}">${user.email}</option>`;
+                        if (user.role === 'team_leader') {
+                            teamLeaderSelect.innerHTML += `<option value="${user.id}">${user.email}</option>`;
+                        }
+                    }
+                });
+            });
+        }
+
+        document.getElementById('role-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const userId = document.getElementById('user-select').value;
+            const newRole = document.getElementById('new-role').value;
+            const teamLeaderId = document.getElementById('team-leader-select').value;
+
+            if (newRole === 'team_member' && !teamLeaderId) {
+                alert('Please select a team leader for the team member.');
+                return;
+            }
+
+            fetch(roleAssignmentApiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    role: newRole,
+                    team_leader_id: teamLeaderId || null
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('Role assigned successfully');
+                loadUsers(); // Reload users to update role options
+            })
+            .catch(error => console.error('Error:', error));
+        });
+
+        document.getElementById('task-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            const assigned_to = document.getElementById('assigned_to').value;
+
+            fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    title,
+                    description,
+                    assigned_to
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                loadTasks();
+                document.getElementById('task-form').reset();
+            })
+            .catch(error => console.error('Error:', error));
+        });
+
+        document.getElementById('new-role').addEventListener('change', function() {
+            const role = this.value;
+            const teamLeaderSelect = document.getElementById('team-leader-select');
+
+            if (role === 'team_member') {
+                teamLeaderSelect.style.display = 'block';
+            } else {
+                teamLeaderSelect.style.display = 'none';
+                teamLeaderSelect.value = ''; // Clear the selection if role is not team_member
+            }
+        });
+
+        loadTasks();
+        loadUsers();
+    </script>
+</body>
+</html>

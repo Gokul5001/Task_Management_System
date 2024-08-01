@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Leader Dashboard</title>
+    <style>
+        /* Same styles as register.html */
+        .dashboard {
+            margin-top: 20px;
+        }
+        .dashboard h2 {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Team Leader Dashboard</h2>
+        <div class="dashboard">
+            <h2>Create Task</h2>
+            <form id="task-form">
+                <input type="text" id="title" placeholder="Task Title" required>
+                <textarea id="description" rows="4" placeholder="Task Description" required></textarea>
+                <select id="assigned_to" required>
+                    <option value="">Select Team Member</option>
+                    <!-- Options will be populated dynamically -->
+                </select>
+                <button type="submit">Create Task</button>
+            </form>
+            <div id="task-list">
+                <h2>Your Tasks</h2>
+                <!-- Task list will be populated dynamically -->
+            </div>
+        </div>
+    </div>
+    <script>
+        const apiUrl = 'http://localhost:8000/tasks/'; // Update with your tasks API URL
+        const token = localStorage.getItem('token');
+
+        function loadTasks() {
+            fetch(apiUrl, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const taskList = document.getElementById('task-list');
+                taskList.innerHTML = '<h2>Your Tasks</h2>';
+                data.forEach(task => {
+                    taskList.innerHTML += `
+                        <div class="task-item">
+                            <h3>${task.title}</h3>
+                            <p>${task.description}</p>
+                            <p><strong>Assigned To:</strong> ${task.assigned_to}</p>
+                            <p><strong>Status:</strong> ${task.status}</p>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        function loadUsers() {
+            fetch('http://localhost:8000/users/', { // Update with your users endpoint
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const select = document.getElementById('assigned_to');
+                data.forEach(user => {
+                    if (user.role === 'team_member') {
+                        select.innerHTML += `<option value="${user.id}">${user.email}</option>`;
+                    }
+                });
+            });
+        }
+
+        document.getElementById('task-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            const assigned_to = document.getElementById('assigned_to').value;
+
+            fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    title,
+                    description,
+                    assigned_to
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                loadTasks();
+                document.getElementById('task-form').reset();
+            })
+            .catch(error => console.error('Error:', error));
+        });
+
+        loadTasks();
+        loadUsers();
+    </script>
+</body>
+</html>
